@@ -1,20 +1,46 @@
 package org.cloudfoundry.example;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.web.reactive.function.server.RouterFunction;
-import org.springframework.web.reactive.function.server.ServerResponse;
+import static org.springframework.web.reactive.function.server.RouterFunctions.toHttpHandler;
 
-@SpringBootApplication
+import java.util.Optional;
+
+import org.springframework.http.server.reactive.HttpHandler;
+import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
+import org.springframework.web.reactive.function.server.RequestPredicates;
+import org.springframework.web.reactive.function.server.RouterFunction;
+
+import io.netty.channel.Channel;
+import org.springframework.web.reactive.function.server.RouterFunctions;
+import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Mono;
+import reactor.ipc.netty.NettyContext;
+import reactor.ipc.netty.http.server.HttpServer;
+
 public class RouteServiceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(RouteServiceApplication.class, args);
+	public static void main(String[] args) throws Exception {
+		int port = Optional.ofNullable(System.getenv("PORT")).map(Integer::parseInt)
+				.orElse(8080);
+		Channel channel = null;
+		try {
+			HttpServer httpServer = HttpServer.create("0.0.0.0", port);
+			Mono<? extends NettyContext> handler = httpServer
+					.newHandler(new ReactorHttpHandlerAdapter(httpHandler()));
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+				System.out.println("Shut down ...");
+			}));
+			channel = handler.block().channel();
+			channel.closeFuture().sync();
+		}
+		finally {
+			if (channel != null) {
+				channel.eventLoop().shutdownGracefully();
+			}
+		}
 	}
 
-	@Bean
-	RouterFunction<ServerResponse> routes(Controller controller) {
-		return controller.routes();
+	static HttpHandler httpHandler() {
+		RouterFunction<?> route = new Controller().routes();
+		return toHttpHandler(RouterFunctions.route(RequestPredicates.GET("/"), req -> ServerResponse.ok().syncBody("Hoge")).andOther(route));
 	}
 }
