@@ -1,7 +1,7 @@
 ---
 applications:
 - name: route-service-example
-  memory: 512M
+  memory: 768M
   instances: 1
   random-route: true
   path: target/route-service-1.0.0.BUILD-SNAPSHOT.jar
