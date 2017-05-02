@@ -1,8 +1,11 @@
 ---
 applications:
 - name: route-service-example
-  memory: 768M
+  memory: 512M
   instances: 1
   random-route: true
   path: target/route-service-1.0.0.BUILD-SNAPSHOT.jar
   buildpack: https://github.com/cloudfoundry/java-buildpack.git
+  env:
+    JAVA_OPTS: '-XX:ReservedCodeCacheSize=128M -XX:MaxDirectMemorySize=128M -XX:+PrintGCDetails'
+    JBP_CONFIG_OPEN_JDK_JRE: '{ memory_calculator: { stack_threads: 100 } }'

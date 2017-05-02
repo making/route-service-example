@@ -16,17 +16,19 @@
 
 package org.cloudfoundry.example;
 
+import java.net.URI;
+import java.util.Collections;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestOperations;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.net.URI;
+import reactor.core.publisher.Mono;
 
 
 @RestController
@@ -40,26 +42,36 @@ final class Controller {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final RestOperations restOperations;
+    private final WebClient webClient;
 
-    @Autowired
-    Controller(RestOperations restOperations) {
-        this.restOperations = restOperations;
+    Controller() {
+        this.webClient = WebClient.create();
     }
 
-    @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
-    ResponseEntity<?> service(RequestEntity<String> incoming) {
+	@RequestMapping(headers = { FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE })
+	Mono<ResponseEntity<String>> service(RequestEntity<String> incoming) {
         this.logger.info("Incoming Request: {}", incoming);
 
         RequestEntity<?> outgoing = getOutgoingRequest(incoming);
         this.logger.info("Outgoing Request: {}", outgoing);
 
-        return this.restOperations.exchange(outgoing, byte[].class);
-    }
+		WebClient.RequestHeadersSpec<?> spec = this.webClient.method(outgoing.getMethod())
+				.uri(outgoing.getUrl()).headers(outgoing.getHeaders());
+		if (outgoing.getBody() != null) {
+			spec = ((WebClient.RequestBodySpec) spec).syncBody(outgoing.getBody());
+		}
+		return spec.exchange()
+				.flatMap(x -> x.bodyToMono(String.class)
+						.map(s -> ResponseEntity.status(x.statusCode())
+								.headers(x.headers().asHttpHeaders()).body(s)));
+	}
 
     private static RequestEntity<?> getOutgoingRequest(RequestEntity<?> incoming) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.putAll(incoming.getHeaders());
+		HttpHeaders headers = new HttpHeaders();
+		HttpHeaders incomingHeaders = incoming.getHeaders();
+		headers.putAll(incomingHeaders);
+		String host = URI.create(incomingHeaders.getFirst(FORWARDED_URL)).getHost();
+		headers.put(HttpHeaders.HOST, Collections.singletonList(host));
 
         URI uri = headers.remove(FORWARDED_URL).stream()
             .findFirst()
