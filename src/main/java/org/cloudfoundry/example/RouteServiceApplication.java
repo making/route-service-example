@@ -6,12 +6,9 @@ import java.util.Optional;
 
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
-import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 
 import io.netty.channel.Channel;
-import org.springframework.web.reactive.function.server.RouterFunctions;
-import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import reactor.ipc.netty.NettyContext;
 import reactor.ipc.netty.http.server.HttpServer;
@@ -41,6 +38,6 @@ public class RouteServiceApplication {
 
 	static HttpHandler httpHandler() {
 		RouterFunction<?> route = new Controller().routes();
-		return toHttpHandler(RouterFunctions.route(RequestPredicates.GET("/"), req -> ServerResponse.ok().syncBody("Hoge")).andOther(route));
+		return toHttpHandler(route);
 	}
 }
