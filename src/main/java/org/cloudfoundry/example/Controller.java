@@ -62,8 +62,8 @@ final class Controller {
 
 	Mono<ServerResponse> service(ServerRequest req) {
 		if (logger.isInfoEnabled()) {
-			logger.info("Incoming Request: <{} {},{}>", req.method(),
-					req.uri(), req.headers().asHttpHeaders());
+			logger.info("Incoming Request: <{} {},{}>", req.method(), req.uri(),
+					req.headers().asHttpHeaders());
 		}
 
 		HttpHeaders headers = headers(req.headers().asHttpHeaders());
@@ -72,17 +72,19 @@ final class Controller {
 						String.format("No %s header present", FORWARDED_URL)));
 
 		if (logger.isInfoEnabled()) {
-			logger.info("Outgoing Request: <{} {},{}>", req.method(),
-					uri, headers);
+			logger.info("Outgoing Request: <{} {},{}>", req.method(), uri, headers);
 		}
 
-		Mono<String> incomingBody = req.bodyToMono(String.class)
-				.switchIfEmpty(Mono.empty());
-		return incomingBody.flatMap(body -> webClient.method(req.method()).uri(uri)
-				.headers(headers).syncBody(body).exchange()
-				.flatMap(x -> ServerResponse.status(x.statusCode())
-						.headers(x.headers().asHttpHeaders()).body(
-								x.bodyToMono(String.class), String.class)));
+		WebClient.RequestHeadersSpec<?> spec = webClient.method(req.method()).uri(uri)
+				.headers(headers);
+		return req
+				.bodyToMono(String.class).<WebClient.RequestHeadersSpec<?>>map(
+						((WebClient.RequestBodySpec) spec)::syncBody)
+				.switchIfEmpty(Mono.just(spec))
+				.flatMap(s -> s.exchange()
+						.flatMap(x -> ServerResponse.status(x.statusCode())
+								.headers(x.headers().asHttpHeaders()).body(
+										x.bodyToMono(String.class), String.class)));
 	}
 
 	HttpHeaders headers(HttpHeaders incomingHeaders) {
