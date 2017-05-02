@@ -2,3 +2,6 @@ security:
   user:
     name: operator
     password: password
+#logging:
+#  level:
+#    reactor.ipc.netty.channel.ChannelOperationsHandler: DEBUG # useful for debug
