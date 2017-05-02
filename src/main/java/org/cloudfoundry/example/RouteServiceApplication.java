@@ -16,7 +16,7 @@ public class RouteServiceApplication {
 
     @Bean
     RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
+        return new RestTemplate();
     }
 
 }

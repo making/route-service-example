@@ -48,7 +48,7 @@ final class Controller {
     }
 
     @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
-    ResponseEntity<?> service(RequestEntity<byte[]> incoming) {
+    ResponseEntity<?> service(RequestEntity<String> incoming) {
         this.logger.info("Incoming Request: {}", incoming);
 
         RequestEntity<?> outgoing = getOutgoingRequest(incoming);
